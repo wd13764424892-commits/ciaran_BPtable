@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>初芒杯 选手武器ban位录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0c0a08;
+            --panel-bg: #14120f;
+            --border-color: #3a3225;
+            --text-main: #d1c5b4;
+            --accent-color: #d4af37; /* 暗金色 */
+            --danger-color: #8b0000;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Noto Serif SC', 'Cinzel', serif;
+            background-image: radial-gradient(circle at 50% 0%, #1f1b15 0%, #0c0a08 70%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .erdtree-title {
+            color: var(--accent-color);
+            text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+            letter-spacing: 0.15em;
+        }
+
+        .draft-container {
+            width: 100%;
+            max-width: 1100px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            border-radius: 4px;
+            padding: 2rem;
+            position: relative;
+        }
+        
+        .draft-container::before {
+            content: '';
+            position: absolute;
+            top: 4px; left: 4px; right: 4px; bottom: 4px;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            pointer-events: none;
+        }
+
+        .draft-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .sync-status {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: sans-serif;
+            letter-spacing: 0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #555;
+            box-shadow: 0 0 5px #555;
+        }
+
+        .status-dot.online {
+            background-color: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+
+        th {
+            color: #8b7d6b;
+            font-weight: normal;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .player-col {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        td {
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 0;
+            position: relative;
+            border-top: 1px solid rgba(212, 175, 55, 0.05);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        tr td:first-child {
+            border-left: 1px solid rgba(212, 175, 55, 0.05);
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+        }
+
+        tr td:last-child {
+            border-right: 1px solid rgba(212, 175, 55, 0.05);
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+
+        tr:hover td {
+            background-color: rgba(212, 175, 55, 0.05);
+            border-color: rgba(212, 175, 55, 0.2);
+        }
+
+        .editable-cell {
+            padding: 1.25rem 1rem;
+            width: 100%;
+            height: 100%;
+            display: block;
+            outline: none;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.05rem;
+        }
+
+        .editable-cell:empty:before {
+            content: attr(data-placeholder);
+            color: #4a4135;
+            font-style: italic;
+        }
+
+        .editable-cell:focus, .editable-cell:hover {
+            background-color: rgba(212, 175, 55, 0.08);
+            text-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+        }
+        
+        .player-cell .editable-cell {
+            color: #e8e0d5;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+        }
+
+        .remove-row-btn {
+            position: absolute;
+            right: -35px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4a4135;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        tr:hover .remove-row-btn {
+            opacity: 1;
+        }
+
+        .remove-row-btn:hover {
+            color: var(--danger-color);
+            text-shadow: 0 0 10px rgba(139, 0, 0, 0.6);
+        }
+
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+        }
+
+        .btn {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Noto Serif SC', serif;
+            letter-spacing: 0.1em;
+        }
+
+        .btn:hover {
+            background-color: rgba(212, 175, 55, 0.1);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .btn-clear {
+            color: #8b7d6b;
+            border-color: #3a3225;
+        }
+
+        .btn-clear:hover {
+            color: var(--danger-color);
+            border-color: var(--danger-color);
+            background-color: rgba(139, 0, 0, 0.1);
+            box-shadow: 0 0 15px rgba(139, 0, 0, 0.3);
+        }
+
+        .weapon-dropdown {
+            position: absolute;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.9), 0 0 15px rgba(212, 175, 55, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 50;
+            min-width: 160px;
+            text-align: center;
+        }
+
+        .weapon-option {
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid rgba(58, 50, 37, 0.5);
+        }
+
+        .weapon-option:hover {
+            background-color: rgba(212, 175, 55, 0.15);
+            color: var(--accent-color);
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+        }
+
+        .weapon-unban-option {
+            color: #e2e8f0;
+            font-weight: bold;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+            background-color: rgba(20, 18, 15, 0.95);
+        }
+
+        .weapon-unban-option:hover {
+            background-color: rgba(226, 232, 240, 0.15);
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(226, 232, 240, 0.6);
+        }
+
+        .weapon-dropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+        .weapon-dropdown::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.5); 
+        }
+        .weapon-dropdown::-webkit-scrollbar-thumb {
+            background: #4a4135; 
+            border-radius: 3px;
+        }
+        .weapon-dropdown::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color); 
+        }
+
+        .ban-selector:hover {
+            background-color: rgba(212, 175, 55, 0.05);
+            box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="draft-container">
+        <div class="draft-header">
+            <h1 class="text-3xl font-bold erdtree-title">初芒杯 选手武器ban位录</h1>
+            <p class="text-[#8b7d6b] text-sm mt-3 tracking-widest">点击石板，铭刻褪色者之名与被放逐的武器</p>
+            
+            <div class="sync-status" id="syncStatus" title="配置Firebase后即可实现全网实时同步">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">单机模式 (未连接数据库)</span>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="draftTable">
+                <thead>
+                    <tr>
+                        <!-- 这是新加的【编号】列标题 -->
+                        <th class="text-center" style="width: 60px;">编号</th>
+                        <th class="player-col" style="width: 23%;">褪色者</th>
+                        <th style="width: 23%;">封印武器 I</th>
+                        <th style="width: 23%;">封印武器 II</th>
+                        <th style="width: 23%;">封印武器 III</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Rows populated by JS -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="controls">
+            <button id="addRowBtn" class="btn">+ 召唤褪色者</button>
+            <button id="clearAllBtn" class="btn btn-clear">抹除所有印记</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AlzaSyChxPPA1xmOg64f6RTKjAdEJHGecxxM6aA",
+            authDomain: "bptable.firebaseapp.com",
+            databaseURL: "https://bptable-default-rtdb.firebaseio.com",
+            projectId: "bptable",
+            storageBucket: "bptable.firebasestorage.app",
+            messagingSenderId: "516004706615",
+            appId: "1:516004706615:web:c957bd35b2239e807682b2"
+        };
+
+        const weaponCategories = [
+            "短剑", "投掷剑", "直剑", "轻大剑", "大剑", "特大剑", "刺剑", "重刺剑", 
+            "曲剑", "大曲剑", "反手剑", "刀", "大刀", "双头剑", "斧", "大斧", "槌", 
+            "连枷", "大槌", "特大武器", "矛", "大矛", "戟", "镰刀", "软鞭", "拳头", 
+            "格斗术", "钩爪", "兽爪", "调香瓶", "小弓", "长弓", "大弓", "弩", "弩炮", 
+            "手杖", "圣印记", "火把", "小盾", "中盾", "大盾", "突刺盾"
+        ];
+
+        let initialData = [
+            { player: "褪色者 1", b1: "", b2: "", b3: "" },
+            { player: "褪色者 2", b1: "", b2: "", b3: "" },
+            { player: "褪色者 3", b1: "", b2: "", b3: "" },
+            { player: "褪色者 4", b1: "", b2: "", b3: "" },
+            { player: "褪色者 5", b1: "", b2: "", b3: "" }
+        ];
+
+        let activeCell = null;
+        let isOnline = false;
+        let db = null;
+        let dbRef = null;
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getDatabase(app);
+            dbRef = ref(db, 'chumang_draft_data'); 
+            isOnline = true;
+            
+            document.getElementById('statusDot').classList.add('online');
+            document.getElementById('statusText').textContent = "实时同步中 (Online)";
+            document.getElementById('statusText').style.color = "#22c55e";
+        } catch (error) {
+            console.error("Firebase 初始化失败", error);
+        }
+
+        const dropdown = document.createElement('div');
+        dropdown.id = 'weaponDropdown';
+        dropdown.className = 'weapon-dropdown hidden';
+        document.body.appendChild(dropdown);
+
+        const unbanItem = document.createElement('div');
+        unbanItem.className = 'weapon-option weapon-unban-option';
+        unbanItem.textContent = '◆ 解除封印 ◆';
+        unbanItem.addEventListener('click', (e) => {
+            if(activeCell) {
+                activeCell.textContent = ''; 
+                activeCell.style.color = ''; 
+                saveTableData(); 
+            }
+            dropdown.classList.add('hidden');
+            e.stopPropagation();
+        });
+        dropdown.appendChild(unbanItem);
+
+        weaponCategories.forEach(category => {
+            const item = document.createElement('div');
+            item.className = 'weapon-option';
+            item.textContent = category;
+            item.addEventListener('click', (e) => {
+                if(activeCell) {
+                    activeCell.textContent = category;
+                    activeCell.style.color = '#d4af37'; 
+                    saveTableData(); 
+                }
+                dropdown.classList.add('hidden');
+                e.stopPropagation();
+            });
+            dropdown.appendChild(item);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.weapon-dropdown') && !e.target.closest('.ban-selector')) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        const tableBody = document.getElementById('tableBody');
+
+        function renderTable(dataArray) {
+            tableBody.innerHTML = ''; 
+            dataArray.forEach((data, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <!-- 这是新加的【自动编号】单元格，通过 \${index + 1} 实现顺延 -->
+                    <td class="text-center font-bold" style="color: #6b6054; user-select: none; border-right: 1px solid rgba(212, 175, 55, 0.05);">${index + 1}</td>
+                    
+                    <td class="player-cell">
+                        <div class="editable-cell player-name" contenteditable="true" data-placeholder="刻下真名">${data.player}</div>
+                    </td>
+                    <td class="ban-cell">
+                        <div class="editable-cell ban-selector b1" tabindex="0" data-placeholder="选择封印武器">${data.b1}</div>
+                    </td>
+                    <td class="ban-cell">
+                        <div class="editable-cell ban-selector b2" tabindex="0" data-placeholder="选择封印武器">${data.b2}</div>
+                    </td>
+                    <td class="ban-cell">
+                        <div class="editable-cell ban-selector b3" tabindex="0" data-placeholder="选择封印武器">${data.b3}</div>
+                    </td>
+                    <button class="remove-row-btn" title="放逐此人">×</button>
+                `;
+
+                tr.querySelector('.remove-row-btn').addEventListener('click', () => {
+                    tr.remove();
+                    saveTableData();
+                });
+
+                const playerCell = tr.querySelector('.player-name');
+                playerCell.addEventListener('blur', () => saveTableData());
+                playerCell.addEventListener('focus', () => {
+                    if(playerCell.textContent.trim() === playerCell.getAttribute('data-placeholder')) {
+                        playerCell.textContent = '';
+                    }
+                });
+                playerCell.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+                    document.execCommand('insertText', false, text);
+                });
+
+                const weaponSelectors = tr.querySelectorAll('.ban-selector');
+                weaponSelectors.forEach(cell => {
+                    if(cell.textContent.trim() !== '') cell.style.color = '#d4af37';
+                    cell.addEventListener('click', (e) => {
+                        activeCell = cell;
+                        const rect = cell.getBoundingClientRect();
+                        dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+                        dropdown.style.left = `${rect.left + window.scrollX + (rect.width / 2) - 80}px`; 
+                        dropdown.classList.remove('hidden');
+                        e.stopPropagation();
+                    });
+                });
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function saveTableData() {
+            const rows = tableBody.querySelectorAll('tr');
+            const currentData = [];
+            rows.forEach(row => {
+                currentData.push({
+                    player: row.querySelector('.player-name').textContent.trim(),
+                    b1: row.querySelector('.b1').textContent.trim(),
+                    b2: row.querySelector('.b2').textContent.trim(),
+                    b3: row.querySelector('.b3').textContent.trim()
+                });
+            });
+
+            if (isOnline && dbRef) {
+                set(dbRef, currentData); 
+            }
+        }
+
+        document.getElementById('addRowBtn').addEventListener('click', () => {
+            initialData.push({ player: "", b1: "", b2: "", b3: "" });
+            renderTable(initialData);
+            saveTableData();
+        });
+
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            const cells = document.querySelectorAll('.editable-cell');
+            cells.forEach(cell => {
+                cell.textContent = '';
+                if (cell.classList.contains('ban-selector')) cell.style.color = ''; 
+            });
+            saveTableData();
+        });
+
+        if (isOnline) {
+            onValue(dbRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    if (document.activeElement && document.activeElement.classList.contains('player-name')) {
+                        return; 
+                    }
+                    initialData = data;
+                    renderTable(initialData);
+                } else {
+                    renderTable(initialData);
+                    saveTableData(); 
+                }
+            });
+        } else {
+            renderTable(initialData);
+        }
+
+    </script>
+</body>
+</html>
